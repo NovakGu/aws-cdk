@@ -56,6 +56,8 @@ This module is part of the [AWS Cloud Development Kit](https://github.com/aws/aw
   - [Modify Instance Group](#modify-instance-group)
 - [EKS](#eks)
   - [Call](#call)
+  - [Create Cluster](#eks-create-cluster)
+  - [Delete Cluster](#delete-cluster)
 - [Glue](#glue)
 - [Glue DataBrew](#glue-databrew)
 - [Lambda](#lambda)
@@ -694,6 +696,34 @@ new tasks.EksCall(stack, 'Call a EKS Endpoint', {
   cluster: myEksCluster,
   httpMethod: MethodType.GET,
   httpPath: '/api/v1/namespaces/default/pods',
+});
+```
+
+### EKS Create Cluster
+
+Creates and starts running a cluster.
+Corresponds to the [`createCluster`](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateCluster.html) API in EKS.
+
+```ts
+new tasks.EksCreateCluster(stack, 'Create a Cluster', {
+  name: 'clusterName',
+  role: '*',
+  resourcesVpcConfig: {
+    subnetIds: ['<PUBSUBNET_AZ_1>', '<PUBSUBNET_AZ_2>'],
+    endpointPublicAccess: true,
+    endpointPrivateAccess: false,
+  },
+});
+```
+
+### Delete Cluster
+
+Deletes a running cluster.
+Corresponds to the [`deleteCluster`](https://docs.aws.amazon.com/eks/latest/APIReference/API_DeleteCluster.html) API in EKS.
+
+```ts
+new tasks.EksDeleteCluster(stack, 'Delete a Cluster', {
+  name: 'clusterName',
 });
 ```
 

@@ -45,3 +45,5 @@ export * from './athena/get-query-execution';
 export * from './athena/get-query-results';
 export * from './databrew/start-job-run';
 export * from './eks/call';
+export * from './eks/create-cluster';
+export * from './eks/delete-cluster';
