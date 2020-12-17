@@ -44,3 +44,6 @@ export * from './athena/stop-query-execution';
 export * from './athena/get-query-execution';
 export * from './athena/get-query-results';
 export * from './databrew/start-job-run';
+export * from './codebuild/stop-build';
+export * from './codebuild/batch-delete-builds';
+export * from './codebuild/batch-get-reports';
