@@ -9,7 +9,10 @@ import { integrationResourceArn, validatePatternSupported } from '../private/tas
  * Properties for calling a EKS endpoint with EksCall
  */
 export interface EksDeleteClusterProps extends sfn.TaskStateBaseProps {
-  /** Cluster to delete */
+
+  /**
+   * The EKS cluster to delete
+   */
   readonly cluster: eks.ICluster;
 }
 

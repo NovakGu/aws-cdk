@@ -151,7 +151,7 @@
               {
                 "Ref": "AWS::Partition"
               },
-              ":states:::eks:createCluster\",\"Parameters\":{\"Name\":\"clusterName\",\"Version\":\"1.18\",\"RoleArn\":\"",
+              ":states:::eks:createCluster\",\"Parameters\":{\"Name\":\"myEksCluster\",\"Version\":\"1.18\",\"RoleArn\":\"",
               {
                 "Fn::GetAtt": [
                   "Role1ABCC5F0",

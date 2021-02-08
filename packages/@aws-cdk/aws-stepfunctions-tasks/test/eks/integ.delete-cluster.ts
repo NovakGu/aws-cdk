@@ -6,11 +6,17 @@ import * as cdk from '@aws-cdk/core';
 import { EksDeleteCluster, EksCreateCluster } from '../../lib';
 
 /*
+ * Create a state machine with a task state to use the Kubernetes API to create a cluster
+ *
  * Stack verification steps:
- * * aws stepfunctions start-execution --state-machine-arn <deployed state machine arn> : should return execution arn
- * * aws stepfunctions describe-execution --execution-arn <exection-arn generated before> : should return status as SUCCEEDED and a cluster name
- * * aws eks describe-cluster --name <cluster name> : should return cluster status deleting or cluster does not exist
+ * The generated State Machine can be executed from the CLI (or Step Functions console)
+ * and runs with an execution status of `Succeeded`.
+ *
+ * -- aws stepfunctions start-execution --state-machine-arn <deployed state machine arn> : should return execution arn
+ * -- aws stepfunctions describe-execution --execution-arn <exection-arn generated before> : should return status as SUCCEEDED and a cluster name
+ * -- aws eks describe-cluster --name <cluster name> : should return cluster status deleting or cluster does not exist
  */
+
 const app = new cdk.App();
 const stack = new cdk.Stack(app, 'aws-stepfunctions-tasks-eks-delete-cluster-integ', {
   env: {
@@ -33,13 +39,13 @@ const role = new iam.Role(stack, 'Role', {
   ],
 });
 
+//TODO if changed, README need to be changed as well
 const createClusterJob = new EksCreateCluster(stack, 'Create a Cluster', {
-  name: 'deleteclusterinteg',
-  role: role,
-  resourcesVpcConfig: vpc,
+  clusterName: 'deleteclusterinteg',
+  eksRole: role,
+  vpc: vpc,
   kubernetesVersion: eks.KubernetesVersion.V1_18,
 });
-
 
 const cluster = eks.Cluster.fromClusterAttributes(stack, 'Cluster', {
   clusterName: 'deleteclusterinteg',
@@ -62,3 +68,4 @@ new cdk.CfnOutput(stack, 'stateMachineArn', {
 
 
 app.synth();
+//TODO verify the resource created can be executed

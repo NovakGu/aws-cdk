@@ -5,10 +5,15 @@ import * as sfn from '@aws-cdk/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { integrationResourceArn, validatePatternSupported } from '../private/task-utils';
 
-/** Properties for creating a cluster with EksCreateCluster */
+/**
+ * Properties for creating a cluster with EksCreateCluster
+ */
 export interface EksCreateClusterProps extends sfn.TaskStateBaseProps {
-  /** Name of the cluster */
-  readonly name: string;
+
+  /**
+   * Name of the cluster
+   */
+  readonly clusterName: string;
 
   /**
    * The desired Kubernetes version for your cluster.
@@ -16,11 +21,16 @@ export interface EksCreateClusterProps extends sfn.TaskStateBaseProps {
    */
   readonly kubernetesVersion?: eks.KubernetesVersion;
 
-  /** EKS Role ARN to create a cluster */
-  readonly role: iam.IRole;
+  /**
+   * The IAM role that provides permissions for the Kubernetes control plane
+   * to make calls to AWS API operations on your behalf
+   */
+  readonly eksRole: iam.IRole;
 
-  /** VPC configuration used by the cluster control plane */
-  readonly resourcesVpcConfig: ec2.IVpc;
+  /**
+   * The VPC in which this Cluster was created
+   */
+  readonly vpc: ec2.IVpc;
 
   /**
    * Indicates if private access is enabled.
@@ -28,8 +38,12 @@ export interface EksCreateClusterProps extends sfn.TaskStateBaseProps {
    */
   readonly privateAccess?: boolean;
 
+  //TODO maybe change it as an interface
+  //readonly protoPrivateAccess?: EndpointAccess;
+
   /**
-   * Indicates if public access is enabled.
+   * Indicates if public access is enabled, by default public access is enabled.
+   * @see https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html
    * @default true
    */
   readonly publicAccess?: boolean;
@@ -101,14 +115,18 @@ export class EksCreateCluster extends sfn.TaskStateBase {
       ];
     }
 
+    /** CreateCluster does not support a resource
+     * '*' must be specified in the Resource element for CreateCluster's policy statement.
+     * @see https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonelasticcontainerserviceforkubernetes.html
+     */
     this.taskPolicies = [
       new iam.PolicyStatement({
-        resources: ['*'], // Need wildcard permissions to create cluster with any name https://docs.aws.amazon.com/step-functions/latest/dg/eks-iam.html
+        resources: ['*'],
         actions: iamActions,
       }),
       new iam.PolicyStatement({
         actions: ['iam:PassRole'],
-        resources: [props.role.roleArn],
+        resources: [props.eksRole.roleArn],
         conditions: {
           StringEquals: { 'iam:PassedToService': 'eks.amazonaws.com' },
         },
@@ -118,27 +136,26 @@ export class EksCreateCluster extends sfn.TaskStateBase {
 
   /**
    * Provides the EKS create cluster service integration task configuration
-   */
-  /**
+   *
    * @internal
    */
   protected _renderTask(): any {
     const subnets: string[] = [];
-    this.props.resourcesVpcConfig.publicSubnets.forEach(element => subnets?.push(element.subnetId));
-    this.props.resourcesVpcConfig.privateSubnets.forEach(element => subnets?.push(element.subnetId));
-    this.props.resourcesVpcConfig.isolatedSubnets.forEach(element => subnets?.push(element.subnetId));
+    this.props.vpc.publicSubnets.forEach(element => subnets?.push(element.subnetId));
+    this.props.vpc.privateSubnets.forEach(element => subnets?.push(element.subnetId));
+    this.props.vpc.isolatedSubnets.forEach(element => subnets?.push(element.subnetId));
 
     const securityGroup = new ec2.SecurityGroup(this, 'ControlPlaneSecurityGroup', {
-      vpc: this.props.resourcesVpcConfig,
+      vpc: this.props.vpc,
       description: 'EKS Control Plane Security Group',
     });
 
     return {
       Resource: integrationResourceArn('eks', 'createCluster', this.integrationPattern),
       Parameters: sfn.FieldUtils.renderObject({
-        Name: this.props.name,
+        Name: this.props.clusterName,
         Version: this.props.kubernetesVersion?.version,
-        RoleArn: this.props.role.roleArn,
+        RoleArn: this.props.eksRole.roleArn,
         ResourcesVpcConfig: {
           SubnetIds: subnets,
           SecurityGroupIds: [securityGroup.securityGroupId],
@@ -159,7 +176,9 @@ export class EksCreateCluster extends sfn.TaskStateBase {
   }
 }
 
-/** Enable or disable exporting the Kubernetes control plane logs for your cluster to CloudWatch Logs */
+/**
+ * Enable or disable exporting the Kubernetes control plane logs for your cluster to CloudWatch Logs
+ */
 export interface LoggingOptions {
 
   /**
@@ -171,7 +190,8 @@ export interface LoggingOptions {
 }
 
 /**
- * The cluster control plane logging configuration for your cluster */
+ * The cluster control plane logging configuration for your cluster
+ */
 export interface ClusterLogging {
 
   /**
@@ -189,7 +209,9 @@ export interface ClusterLogging {
   readonly enabled?: boolean;
 }
 
-/** The encryption configuration for the cluster. */
+/**
+ * The encryption configuration for the cluster.
+ */
 export interface EncryptionConfig {
 
   /**
@@ -207,7 +229,9 @@ export interface EncryptionConfig {
   readonly provider?: Provider
 }
 
-/** The encryption configuration for the cluster. */
+/**
+ * The encryption configuration for the cluster.
+ */
 export interface Provider {
 
   /**

@@ -6,11 +6,16 @@ import * as cdk from '@aws-cdk/core';
 import { EksCreateCluster } from '../../lib';
 
 /*
+ * Create a state machine with a task state to use the Kubernetes API to create a cluster
+ *
  * Stack verification steps:
- * * aws stepfunctions start-execution --state-machine-arn <deployed state machine arn> : should return execution arn
- * * aws stepfunctions describe-execution --execution-arn <exection-arn generated before> : should return status as SUCCEEDED and a cluster name
- * * aws eks describe-cluster --name <cluster name> : should return cluster created by state machine
+ * The generated State Machine can be executed from the CLI (or Step Functions console)
+ * and runs with an execution status of `Succeeded`.
+ *
+ * -- aws stepfunctions start-execution --state-machine-arn <state-machine-arn-from-output> provides execution arn
+ * -- aws stepfunctions describe-execution --execution-arn <state-machine-arn-from-output> returns a status of `Succeeded`
  */
+
 const app = new cdk.App();
 const stack = new cdk.Stack(app, 'aws-stepfunctions-tasks-eks-create-cluster-integ', {
   env: {
@@ -23,7 +28,7 @@ const vpc = ec2.Vpc.fromLookup(stack, 'eks', {
   isDefault: true,
 });
 
-const role = new iam.Role(stack, 'Role', {
+const eksRole = new iam.Role(stack, 'Role', {
   assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
   managedPolicies: [
     iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
@@ -33,11 +38,10 @@ const role = new iam.Role(stack, 'Role', {
   ],
 });
 
-
 const createClusterJob = new EksCreateCluster(stack, 'Create a Cluster', {
-  name: 'clusterName',
-  role: role,
-  resourcesVpcConfig: vpc,
+  clusterName: 'myEksCluster',
+  eksRole: eksRole,
+  vpc: vpc,
   kubernetesVersion: eks.KubernetesVersion.V1_18,
 });
 
@@ -54,3 +58,5 @@ new cdk.CfnOutput(stack, 'stateMachineArn', {
 
 
 app.synth();
+
+//TODO verify the resource created can be executed

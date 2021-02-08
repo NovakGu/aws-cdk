@@ -706,8 +706,8 @@ Corresponds to the [`createCluster`](https://docs.aws.amazon.com/eks/latest/APIR
 
 ```ts
 new tasks.EksCreateCluster(this, 'Create an EKS Cluster', {
-  name: 'clusterName',
-  role: NodeInstanceRole,
+  clusterName: 'clusterName',
+  eksRole: NodeInstanceRole,
   resourcesVpcConfig: {
     subnetIds: ['<PUBSUBNET_AZ_1>', '<PUBSUBNET_AZ_2>'],
     endpointPublicAccess: true,
