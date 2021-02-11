@@ -4,13 +4,19 @@ import { Stack } from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import { integrationResourceArn, validatePatternSupported } from '../private/task-utils';
 
-/** Properties for deleting a Fargate Profile with EksDeleteFargateProfile */
+/**
+ * Properties for deleting a Fargate Profile with EksDeleteFargateProfile
+ */
 export interface EksDeleteFargateProfileProps extends sfn.TaskStateBaseProps {
 
-  /** The name of the Amazon EKS cluster to apply the Fargate profile to */
+  /**
+   * The name of the Amazon EKS cluster to apply the Fargate profile to
+   */
   readonly clusterName: string;
 
-  /** The name of the Fargate profile */
+  /**
+   * The name of the Fargate profile
+   */
   readonly fargateProfileName: string;
 }
 
@@ -37,24 +43,33 @@ export class EksDeleteFargateProfile extends sfn.TaskStateBase {
 
     validatePatternSupported(this.integrationPattern, EksDeleteFargateProfile.SUPPORTED_INTEGRATION_PATTERNS);
 
+    let iamActions: string[] | undefined;
+    if (this.integrationPattern === sfn.IntegrationPattern.REQUEST_RESPONSE) {
+      iamActions = ['eks:DeleteFargateProfile'];
+    } else if (this.integrationPattern === sfn.IntegrationPattern.RUN_JOB) {
+      iamActions = [
+        'eks:DeleteFargateProfile',
+        'eks:DescribeFargateProfile',
+      ];
+    }
+
     this.taskPolicies = [
       new iam.PolicyStatement({
         resources: [
           Stack.of(this).formatArn({
             service: 'eks',
             resource: 'fargateprofile',
-            resourceName: `${this.props.clusterName}/${this.props.fargateProfileName}/*`,
+            resourceName: '*',
           }),
         ],
-        actions: ['eks:DeleteFargateProfile'],
+        actions: iamActions,
       }),
     ];
   }
 
   /**
    * Provides the EKS Delete NodeGroup service integration task configuration
-   */
-  /**
+   *
    * @internal
    */
   protected _renderTask(): any {

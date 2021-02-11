@@ -3,24 +3,32 @@ import * as sfn from '@aws-cdk/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { integrationResourceArn, validatePatternSupported } from '../private/task-utils';
 
-/** Properties for creating a Fargate Profile with EksCreateFargateProfile */
+/**
+ *  Properties for creating a Fargate Profile with EksCreateFargateProfile
+ */
 export interface EksCreateFargateProfileProps extends sfn.TaskStateBaseProps {
 
-  /** The name of the Fargate profile */
+  /**
+   * The name of the Fargate profile
+   */
   readonly fargateProfileName: string;
 
-  /** The name of the Amazon EKS cluster to apply the Fargate profile to */
+  /**
+   * The name of the Amazon EKS cluster to apply the Fargate profile to
+   */
   readonly clusterName: string;
 
-  /** The Amazon Resource Name (ARN) of the pod execution role to use for pods that match the selectors in the Fargate profile */
-  readonly podExecutionRole: string;
+  /**
+   * The Amazon Resource Name (ARN) of the pod execution role to use for pods that match the selectors in the Fargate profile
+   */
+  readonly podExecutionRole: iam.IRole;
 
   /**
    * The selectors to match for pods to use this Fargate profile
    *
    * @default - no selectors
    */
-  readonly selectors?: object[];
+  readonly selectors?: FargateProfileSelector[];
 
   /**
    * Unique, case-sensitive identifier that you provide to ensure the idempotency of the request
@@ -35,6 +43,13 @@ export interface EksCreateFargateProfileProps extends sfn.TaskStateBaseProps {
    * @default - no tags
    */
   readonly tags?: {[key: string]: string};
+
+  /**
+   * The IDs of subnets to launch your pods into.
+   *
+   * @default - no subnets
+   */
+  readonly subnets?: string[];
 }
 
 /**
@@ -60,17 +75,28 @@ export class EksCreateFargateProfile extends sfn.TaskStateBase {
 
     validatePatternSupported(this.integrationPattern, EksCreateFargateProfile.SUPPORTED_INTEGRATION_PATTERNS);
 
+    let iamActions: string[] | undefined;
+    if (this.integrationPattern === sfn.IntegrationPattern.REQUEST_RESPONSE) {
+      iamActions = ['eks:CreateFargateProfile'];
+    } else if (this.integrationPattern === sfn.IntegrationPattern.RUN_JOB) {
+      iamActions = [
+        'eks:CreateFargateProfile',
+        'eks:DescribeFargateProfile',
+        'eks:DeleteFargateProfile',
+      ];
+    }
+
     this.taskPolicies = [
       new iam.PolicyStatement({
         resources: ['*'],
-        actions: ['eks:CreateFargateProfile'],
+        actions: iamActions,
       }),
       new iam.PolicyStatement({
         resources: ['*'],
         actions: ['iam:GetRole'],
       }),
       new iam.PolicyStatement({
-        resources: [this.props.podExecutionRole],
+        resources: [this.props.podExecutionRole.roleArn],
         actions: ['iam:PassRole'],
         conditions: {
           StringEqualsIfExists: {
@@ -85,21 +111,47 @@ export class EksCreateFargateProfile extends sfn.TaskStateBase {
 
   /**
    * Provides the EKS Create NodeGroup service integration task configuration
-   */
-  /**
+   *
    * @internal
    */
   protected _renderTask(): any {
+    const selectors: object[] = [];
+    this.props.selectors?.forEach(fargateProfileSelector => selectors.push({
+      Namespace: fargateProfileSelector.namespace,
+      Labels: fargateProfileSelector.labels,
+    }));
     return {
       Resource: integrationResourceArn('eks', 'createFargateProfile', this.integrationPattern),
       Parameters: sfn.FieldUtils.renderObject({
         FargateProfileName: this.props.fargateProfileName,
         ClusterName: this.props.clusterName,
-        PodExecutionRoleArn: this.props.podExecutionRole,
-        Selectors: this.props.selectors,
+        PodExecutionRoleArn: this.props.podExecutionRole.roleArn,
+        ...(this.props.selectors ? {
+          Selectors: selectors,
+        } : undefined ),
+        Subnets: this.props.subnets,
         ClientRequestToken: this.props.clientRequestToken,
         Tags: this.props.tags,
       }),
     };
   }
 }
+
+/**
+ * An object representing an AWS Fargate profile selector.
+ */
+export interface FargateProfileSelector {
+
+  /**
+   * The Kubernetes labels that the selector should match
+   * @default - no labels
+   */
+  readonly labels?: {[key: string]: string};
+
+  /**
+   * Flag for log type exports of its control plane logs to CloudWatch Logs
+   * @default - no namespace
+   */
+  readonly namespace?: string;
+}
+

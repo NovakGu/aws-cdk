@@ -679,6 +679,13 @@ The service integration APIs correspond to Amazon EKS APIs.
 Add a new Fargate Profile to a cluster.
 Corresponds to the [`createFargateProfile`](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateFargateProfile.html) API in EKS.
 
+Amazon EKS uses service-linked roles which contain the permissions Amazon EKS requires to call other services on your behalf. 
+If these service-linked roles do not exist in your account already, you must add the iam:CreateServiceLinkedRole permission to the IAM role used by Step Functions. 
+For more information, see Using Service-Linked Roles in the Amazon EKS User Guide.
+
+The IAM role used by Step Functions must have iam:PassRole permissions to pass the cluster IAM role to Amazon EKS. 
+For more information, see Amazon EKS cluster IAM role in the Amazon EKS User Guide.
+
 ```ts
 new tasks.EksCreateFargateProfile(stack, 'Create a Fargate Profile', {
   fargateProfileName: 'fargateprofilename',
